@@ -1,0 +1,23 @@
+{
+  "name": "mackorone-playlist-pr-bot",
+  "version": "1.0.0",
+  "description": "GitHub bot that automatically verifies PRs with new playlist entries",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maciejpedzich/mackorone-playlist-pr-bot.git"
+  },
+  "author": "Maciej Pędzich",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/maciejpedzich/mackorone-playlist-pr-bot/issues"
+  },
+  "homepage": "https://github.com/maciejpedzich/mackorone-playlist-pr-bot#readme",
+  "dependencies": {
+    "@probot/adapter-aws-lambda-serverless": "^3.0.1",
+    "probot": "^12.2.8"
+  }
+}
