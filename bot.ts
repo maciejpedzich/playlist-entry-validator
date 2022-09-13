@@ -1,6 +1,6 @@
 import { ApplicationFunction } from 'probot';
 
-const appFn: ApplicationFunction = (app) => {
+const bot: ApplicationFunction = (app) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async (context) => {
@@ -8,8 +8,8 @@ const appFn: ApplicationFunction = (app) => {
       const siQueryStart = '?si=';
       const pull_number = context.payload.number;
       const repo = {
-        owner: 'mackorone',
-        repo: 'spotify-playlist-archive'
+        owner: context.payload.repository.owner.login,
+        repo: context.payload.repository.name
       };
 
       const removePathFromFilename = (filename: string) =>
@@ -78,52 +78,47 @@ const appFn: ApplicationFunction = (app) => {
             .map(({ filename }) => `- ${filename}`)
             .join('\n');
 
-          const body = `It looks like the following playlists don't exist: ${renameList}`;
+          const body = `It looks like the following playlists don't exist:\n${renameList}`;
+
+          await upsertReview(body, existingReview?.id);
+        } else if (filesWithSiQuery.length > 0) {
+          const renameList = filesWithSiQuery
+            .map(({ filename }) => {
+              const filenameWithoutPath = removePathFromFilename(filename);
+              const [targetFilename] = filenameWithoutPath.split(siQueryStart);
+
+              return `- Rename ${filenameWithoutPath} to **${targetFilename}**`;
+            })
+            .join('\n');
+
+          const body = `In order for me to accept changes, you have to:\n\n${renameList}`;
 
           await upsertReview(body, existingReview?.id);
         } else {
-          if (filesWithSiQuery.length > 0) {
-            const renameList = filesWithSiQuery
-              .map(({ filename }) => {
-                const filenameWithoutPath = removePathFromFilename(filename);
-                const [targetFilename] =
-                  filenameWithoutPath.split(siQueryStart);
-
-                return `- Rename ${filenameWithoutPath} to **${targetFilename}**`;
-              })
-              .join('\n');
-
-            const body = `In order for me to accept changes, you have to: ${renameList}`;
-
-            await upsertReview(body, existingReview?.id);
-          } else {
-            if (existingReview) {
-              await context.octokit.pulls.dismissReview({
-                ...repo,
-                pull_number,
-                review_id: existingReview.id,
-                message: 'Changes can now be accepted!'
-              });
-            }
-
-            await context.octokit.pulls.merge({
+          if (existingReview) {
+            await context.octokit.pulls.dismissReview({
               ...repo,
-              pull_number
+              pull_number,
+              review_id: existingReview.id,
+              message: 'Changes can now be accepted!'
             });
           }
+
+          await context.octokit.pulls.merge({
+            ...repo,
+            pull_number
+          });
         }
       } catch (error) {
-        console.error(error);
-
         await context.octokit.pulls.createReview({
           ...repo,
           pull_number,
           event: 'COMMENT',
-          body: 'Something went wrong while performing automatic verification! @mackorone should handle it manually.'
+          body: 'Something went wrong while verifying new playlists! @mackorone should handle it shortly.'
         });
       }
     }
   );
 };
 
-export = appFn;
+export = bot;
