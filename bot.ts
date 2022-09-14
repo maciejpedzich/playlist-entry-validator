@@ -7,22 +7,16 @@ const bot: ApplicationFunction = (app) => {
       const registryDirectoryPath = 'playlists/registry/';
       const siQueryStart = '?si=';
 
-      const loginAllowlist = ['mackorone', 'maciejpedzich'];
-      const repoAllowlist = ['spotify-playlist-archive', 'bot-testing-ground'];
-
       const pull_number = context.payload.number;
-      const repoData = {
+      const currentRepoData = {
         owner: context.payload.repository.owner.login,
         repo: context.payload.repository.name
       };
 
-      if (
-        !(
-          loginAllowlist.includes(repoData.owner) &&
-          repoAllowlist.includes(repoData.repo)
-        )
-      )
-        return;
+      const repoAllowlist = [
+        { owner: 'mackorone', repo: 'spotify-playlist-archive' },
+        { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
+      ];
 
       const removePathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
@@ -30,24 +24,31 @@ const bot: ApplicationFunction = (app) => {
       const upsertReview = async (body: string, review_id?: number) => {
         if (review_id) {
           await context.octokit.pulls.updateReview({
-            ...repoData,
+            ...currentRepoData,
             pull_number,
             review_id,
             body
           });
         } else {
           await context.octokit.pulls.createReview({
-            ...repoData,
+            ...currentRepoData,
             pull_number,
             event: 'REQUEST_CHANGES',
-            body
+            body: `Hey there, thank you for taking interest in this project!\n${body}`
           });
         }
       };
 
       try {
+        const isAllowlistedRepo = repoAllowlist.find(
+          ({ owner, repo }) =>
+            currentRepoData.owner === owner && currentRepoData.repo === repo
+        );
+
+        if (!isAllowlistedRepo) return;
+
         const { data: prFiles } = await context.octokit.pulls.listFiles({
-          ...repoData,
+          ...currentRepoData,
           pull_number
         });
 
@@ -79,7 +80,7 @@ const bot: ApplicationFunction = (app) => {
         );
 
         const { data: priorReviews } = await context.octokit.pulls.listReviews({
-          ...repoData,
+          ...currentRepoData,
           pull_number
         });
 
@@ -103,30 +104,31 @@ const bot: ApplicationFunction = (app) => {
             })
             .join('\n');
 
-          const body = `Almost there! You just have to:\n${renameList}`;
+          const body = `All new entries point to existing playlists, but you have to:\n${renameList}`;
 
           await upsertReview(body, existingReview?.id);
         } else {
           if (existingReview) {
             await context.octokit.pulls.dismissReview({
-              ...repoData,
+              ...currentRepoData,
               pull_number,
               review_id: existingReview.id,
-              message: 'All entries can now be accepted.'
+              message: '🎉 Your entries can now be accepted! 🎉'
             });
           }
 
-          await context.octokit.pulls.merge({
-            ...repoData,
-            pull_number
-          });
+          // TODO: Change successful validation handling
+          // await context.octokit.pulls.merge({
+          //   ...currentRepoData,
+          //   pull_number
+          // });
         }
       } catch (error) {
         await context.octokit.pulls.createReview({
-          ...repoData,
+          ...currentRepoData,
           pull_number,
           event: 'COMMENT',
-          body: 'Something went wrong while verifying changes! @mackorone should handle it shortly.'
+          body: 'Something went wrong while verifying your entries! @mackorone should handle it shortly.'
         });
       }
     }
