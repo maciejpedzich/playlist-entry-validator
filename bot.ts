@@ -104,7 +104,7 @@ const bot: ApplicationFunction = (app) => {
             })
             .join('\n');
 
-          const body = `All new entries point to existing playlists, but you have to:\n${renameList}`;
+          const body = `All new files point to existing playlists, but you have to:\n${renameList}`;
 
           await upsertReview(body, existingReview?.id);
         } else {
@@ -113,7 +113,7 @@ const bot: ApplicationFunction = (app) => {
               ...currentRepoData,
               pull_number,
               review_id: existingReview.id,
-              message: '🎉 Your entries can now be accepted! 🎉'
+              message: '🎉 Your pull request can be merged! 🎉'
             });
           }
 
