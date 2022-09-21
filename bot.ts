@@ -1,4 +1,5 @@
 import { ApplicationFunction } from 'probot';
+import getMetaData from 'metadata-scraper';
 
 const bot: ApplicationFunction = (app) => {
   app.on(
@@ -8,7 +9,7 @@ const bot: ApplicationFunction = (app) => {
       const siQueryStart = '?si=';
 
       const pull_number = context.payload.number;
-      const currentRepoData = {
+      const workingRepo = {
         owner: context.payload.repository.owner.login,
         repo: context.payload.repository.name
       };
@@ -21,34 +22,42 @@ const bot: ApplicationFunction = (app) => {
       const removePathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
 
-      const upsertReview = async (body: string, review_id?: number) => {
+      const upsertReview = async (
+        review_id: number | undefined,
+        body: string,
+        event: 'REQUEST_CHANGES' | 'COMMENT'
+      ) => {
         if (review_id) {
-          await context.octokit.pulls.updateReview({
-            ...currentRepoData,
+          const { data } = await context.octokit.pulls.updateReview({
+            ...workingRepo,
             pull_number,
             review_id,
             body
           });
+
+          return data.id;
         } else {
-          await context.octokit.pulls.createReview({
-            ...currentRepoData,
+          const { data } = await context.octokit.pulls.createReview({
+            ...workingRepo,
             pull_number,
-            event: 'REQUEST_CHANGES',
-            body: `Hey there, thank you for taking interest in this project!\n${body}`
+            event,
+            body
           });
+
+          return data.id;
         }
       };
 
       try {
-        const isAllowlistedRepo = repoAllowlist.find(
+        const allowlistedRepo = repoAllowlist.find(
           ({ owner, repo }) =>
-            currentRepoData.owner === owner && currentRepoData.repo === repo
+            workingRepo.owner === owner && workingRepo.repo === repo
         );
 
-        if (!isAllowlistedRepo) return;
+        if (!allowlistedRepo) return;
 
         const { data: prFiles } = await context.octokit.pulls.listFiles({
-          ...currentRepoData,
+          ...workingRepo,
           pull_number
         });
 
@@ -57,22 +66,40 @@ const bot: ApplicationFunction = (app) => {
             status === 'added' && filename.startsWith(registryDirectoryPath)
         );
 
-        const filesWithSiQuery = filesToVerify.filter(({ filename }) =>
-          filename.includes(siQueryStart)
-        );
-
         const playlistLookupResults = await Promise.all(
           filesToVerify.map(async ({ filename }) => {
             const filenameWithoutPath = removePathFromFilename(filename);
-            const spotifyResponse = await fetch(
-              `https://open.spotify.com/playlist/${filenameWithoutPath}`
-            );
+            const url = `https://open.spotify.com/playlist/${filenameWithoutPath}`;
+
+            const spotifyResponse = await fetch(url);
+            const found = spotifyResponse.status === 200;
+            let info: string | null = null;
+
+            if (found) {
+              const html = await spotifyResponse.text();
+              const { title, description } = await getMetaData({ html });
+              const playlistMeta = (description || '')
+                .split(' · ')
+                .filter((text) => text !== 'Playlist');
+
+              info = [title, ...playlistMeta].join(' · ');
+            }
 
             return {
               filename: removePathFromFilename(filename),
-              found: spotifyResponse.status === 200
+              found,
+              info,
+              url
             };
           })
+        );
+
+        const validEntries = playlistLookupResults.filter(
+          ({ found, filename }) => found && !filename.includes(siQueryStart)
+        );
+
+        const entriesWithSiQuery = playlistLookupResults.filter(
+          ({ found, filename }) => found && filename.includes(siQueryStart)
         );
 
         const notFoundPlaylists = playlistLookupResults.filter(
@@ -80,55 +107,83 @@ const bot: ApplicationFunction = (app) => {
         );
 
         const { data: priorReviews } = await context.octokit.pulls.listReviews({
-          ...currentRepoData,
+          ...workingRepo,
           pull_number
         });
 
         const [existingReview] = priorReviews;
+        const canMergeMessage = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
+
+        let identifiedPlaylistsText = '';
+        let renameRequiredText = '';
+        let notFoundText = '';
+        let successText = canMergeMessage;
+        let reviewEvent: 'REQUEST_CHANGES' | 'COMMENT' = 'COMMENT';
+
+        if (validEntries.length > 0) {
+          const playlistLinks = validEntries
+            .map(({ url, info }) => `- [${info}](${url})`)
+            .join('\n');
+
+          identifiedPlaylistsText = `### ✅ These playlists were indentified:\n${playlistLinks}`;
+        }
 
         if (notFoundPlaylists.length > 0) {
           const renameList = notFoundPlaylists
             .map(({ filename }) => `- ${filename}`)
             .join('\n');
 
-          const body = `It looks like the following playlists don't exist:\n${renameList}`;
+          successText = '';
+          reviewEvent = 'REQUEST_CHANGES';
+          notFoundText = `### ❌ Playlists for these entries were not found:\n${renameList}`;
+        }
 
-          await upsertReview(body, existingReview?.id);
-        } else if (filesWithSiQuery.length > 0) {
-          const renameList = filesWithSiQuery
+        if (entriesWithSiQuery.length > 0) {
+          const renameList = entriesWithSiQuery
             .map(({ filename }) => {
               const filenameWithoutPath = removePathFromFilename(filename);
               const [targetFilename] = filenameWithoutPath.split(siQueryStart);
 
-              return `- Rename ${filenameWithoutPath} to **${targetFilename}**`;
+              return `- From ${filenameWithoutPath} to **${targetFilename}**`;
             })
             .join('\n');
 
-          const body = `All new files point to existing playlists, but you have to:\n${renameList}`;
+          successText = '';
+          reviewEvent = 'REQUEST_CHANGES';
+          renameRequiredText = `### ⚠️ These entries have to be renamed:\n${renameList}`;
+        }
 
-          await upsertReview(body, existingReview?.id);
-        } else {
-          if (existingReview) {
-            await context.octokit.pulls.dismissReview({
-              ...currentRepoData,
-              pull_number,
-              review_id: existingReview.id,
-              message: '🎉 Your pull request can be merged! 🎉'
-            });
-          }
+        const reviewBody = [
+          identifiedPlaylistsText,
+          renameRequiredText,
+          notFoundText,
+          successText
+        ]
+          .filter(Boolean)
+          .join('\n\n');
 
-          // TODO: Change successful validation handling
-          // await context.octokit.pulls.merge({
-          //   ...currentRepoData,
-          //   pull_number
-          // });
+        await upsertReview(existingReview?.id, reviewBody, reviewEvent);
+
+        if (
+          renameRequiredText === '' &&
+          notFoundText === '' &&
+          existingReview?.id
+        ) {
+          await context.octokit.pulls.dismissReview({
+            ...workingRepo,
+            pull_number,
+            review_id: existingReview.id,
+            message: 'All new entries are now valid!'
+          });
         }
       } catch (error) {
+        console.error(error);
+
         await context.octokit.pulls.createReview({
-          ...currentRepoData,
+          ...workingRepo,
           pull_number,
           event: 'COMMENT',
-          body: 'Something went wrong while verifying your entries! @mackorone should handle it shortly.'
+          body: `Something went wrong while verifying new entries! @${workingRepo.owner} should handle it shortly...`
         });
       }
     }
