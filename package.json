@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/maciejpedzich/mackorone-playlist-pr-bot#readme",
   "dependencies": {
+    "metadata-scraper": "^0.2.60",
     "probot": "^12.2.8"
   },
   "engines": {
