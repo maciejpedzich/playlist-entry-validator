@@ -28,23 +28,19 @@ const bot: ApplicationFunction = (app) => {
         event: 'REQUEST_CHANGES' | 'COMMENT'
       ) => {
         if (review_id) {
-          const { data } = await context.octokit.pulls.updateReview({
+          await context.octokit.pulls.updateReview({
             ...workingRepo,
             pull_number,
             review_id,
             body
           });
-
-          return data.id;
         } else {
-          const { data } = await context.octokit.pulls.createReview({
+          await context.octokit.pulls.createReview({
             ...workingRepo,
             pull_number,
             event,
             body
           });
-
-          return data.id;
         }
       };
 
@@ -73,6 +69,7 @@ const bot: ApplicationFunction = (app) => {
 
             const spotifyResponse = await fetch(url);
             const found = spotifyResponse.status === 200;
+
             let info: string | null = null;
 
             if (found) {
@@ -112,12 +109,11 @@ const bot: ApplicationFunction = (app) => {
         });
 
         const [existingReview] = priorReviews;
-        const canMergeMessage = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
 
         let identifiedPlaylistsText = '';
         let renameRequiredText = '';
         let notFoundText = '';
-        let successText = canMergeMessage;
+        let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
         let reviewEvent: 'REQUEST_CHANGES' | 'COMMENT' = 'COMMENT';
 
         if (validEntries.length > 0) {
@@ -173,7 +169,7 @@ const bot: ApplicationFunction = (app) => {
             ...workingRepo,
             pull_number,
             review_id: existingReview.id,
-            message: 'All new entries are now valid!'
+            message: 'All new entries can be accepted!'
           });
         }
       } catch (error) {
@@ -183,7 +179,7 @@ const bot: ApplicationFunction = (app) => {
           ...workingRepo,
           pull_number,
           event: 'COMMENT',
-          body: `Something went wrong while verifying new entries! @${workingRepo.owner} should handle it shortly...`
+          body: `Something went wrong while validating new entries! @${workingRepo.owner} should handle it shortly...`
         });
       }
     }
