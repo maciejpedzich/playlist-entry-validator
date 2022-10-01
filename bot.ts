@@ -165,7 +165,6 @@ const bot: ApplicationFunction = (app) => {
         if (
           renameRequiredText === '' &&
           notFoundText === '' &&
-          existingReview?.id &&
           existingReview?.state !== 'APPROVED'
         ) {
           await context.octokit.pulls.dismissReview({
