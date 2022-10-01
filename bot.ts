@@ -22,10 +22,12 @@ const bot: ApplicationFunction = (app) => {
       const removePathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
 
+      type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
+
       const upsertReview = async (
         review_id: number | undefined,
         body: string,
-        event: 'REQUEST_CHANGES' | 'COMMENT'
+        event: ReviewEvent
       ) => {
         if (review_id) {
           await context.octokit.pulls.updateReview({
@@ -114,7 +116,7 @@ const bot: ApplicationFunction = (app) => {
         let renameRequiredText = '';
         let notFoundText = '';
         let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
-        let reviewEvent: 'REQUEST_CHANGES' | 'COMMENT' = 'COMMENT';
+        let reviewEvent: ReviewEvent = 'APPROVE';
 
         if (validEntries.length > 0) {
           const playlistLinks = validEntries
@@ -163,7 +165,8 @@ const bot: ApplicationFunction = (app) => {
         if (
           renameRequiredText === '' &&
           notFoundText === '' &&
-          existingReview?.id
+          existingReview?.id &&
+          existingReview?.state !== 'APPROVED'
         ) {
           await context.octokit.pulls.dismissReview({
             ...workingRepo,
