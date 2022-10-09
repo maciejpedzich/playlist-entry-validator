@@ -1,6 +1,8 @@
 import { ApplicationFunction } from 'probot';
 import getMetaData from 'metadata-scraper';
 
+type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
+
 const bot: ApplicationFunction = (app) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
@@ -22,8 +24,6 @@ const bot: ApplicationFunction = (app) => {
       const removePathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
 
-      type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
-
       const upsertReview = async (
         review_id: number | undefined,
         body: string,
@@ -34,6 +34,7 @@ const bot: ApplicationFunction = (app) => {
             ...workingRepo,
             pull_number,
             review_id,
+            event,
             body
           });
         } else {
@@ -161,19 +162,6 @@ const bot: ApplicationFunction = (app) => {
           .join('\n\n');
 
         await upsertReview(existingReview?.id, reviewBody, reviewEvent);
-
-        if (
-          renameRequiredText === '' &&
-          notFoundText === '' &&
-          existingReview?.state === 'CHANGES_REQUESTED'
-        ) {
-          await context.octokit.pulls.dismissReview({
-            ...workingRepo,
-            pull_number,
-            review_id: existingReview.id,
-            message: 'All new entries can be accepted!'
-          });
-        }
       } catch (error) {
         console.error(error);
 
