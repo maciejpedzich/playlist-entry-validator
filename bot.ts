@@ -34,7 +34,6 @@ const bot: ApplicationFunction = (app) => {
             ...workingRepo,
             pull_number,
             review_id,
-            event,
             body
           });
         } else {
@@ -48,12 +47,12 @@ const bot: ApplicationFunction = (app) => {
       };
 
       try {
-        const allowlistedRepo = repoAllowlist.find(
+        const isAllowlistedRepo = repoAllowlist.find(
           ({ owner, repo }) =>
             workingRepo.owner === owner && workingRepo.repo === repo
         );
 
-        if (!allowlistedRepo) return;
+        if (!isAllowlistedRepo) return;
 
         const { data: prFiles } = await context.octokit.pulls.listFiles({
           ...workingRepo,
@@ -65,14 +64,22 @@ const bot: ApplicationFunction = (app) => {
             status === 'added' && filename.startsWith(registryDirectoryPath)
         );
 
+        if (filesToVerify.length === 0) return;
+
         const playlistLookupResults = await Promise.all(
           filesToVerify.map(async ({ filename }) => {
             const filenameWithoutPath = removePathFromFilename(filename);
             const url = `https://open.spotify.com/playlist/${filenameWithoutPath}`;
+            const expectedStatusCodes = [200, 404];
 
             const spotifyResponse = await fetch(url);
-            const found = spotifyResponse.status === 200;
 
+            if (!expectedStatusCodes.includes(spotifyResponse.status))
+              throw new Error(
+                `${spotifyResponse.url} responded with code ${spotifyResponse.status}`
+              );
+
+            const found = spotifyResponse.status === 200;
             let info: string | null = null;
 
             if (found) {
@@ -124,7 +131,7 @@ const bot: ApplicationFunction = (app) => {
             .map(({ url, info }) => `- [${info}](${url})`)
             .join('\n');
 
-          identifiedPlaylistsText = `### ✅ These playlists were indentified:\n${playlistLinks}`;
+          identifiedPlaylistsText = `### ✅ These playlists have been indentified:\n${playlistLinks}`;
         }
 
         if (notFoundPlaylists.length > 0) {
@@ -134,7 +141,7 @@ const bot: ApplicationFunction = (app) => {
 
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          notFoundText = `### ❌ Playlists for these entries were not found:\n${renameList}`;
+          notFoundText = `### ❌ Playlists for these entries don't exist:\n${renameList}`;
         }
 
         if (entriesWithSiQuery.length > 0) {
