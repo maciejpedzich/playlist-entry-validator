@@ -75,7 +75,7 @@ export const bot: ApplicationFunction = (app) => {
             ).replace('https:/', 'https://');
 
             const url = getPlaylistIdFromUrl(filenameWithoutRegistryPath)
-              ? filename
+              ? filenameWithoutRegistryPath
               : `https://open.spotify.com/playlist/${filenameWithoutRegistryPath}`;
 
             const spotifyResponse = await fetch(url);
