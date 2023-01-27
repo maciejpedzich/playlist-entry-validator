@@ -23,13 +23,13 @@ export const bot: ApplicationFunction = (app) => {
         { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
       ];
 
-      const removePathFromFilename = (filename: string) =>
+      const removeRegistryPathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
 
       const upsertReview = async (
         review_id: number | undefined,
-        body: string,
-        event: ReviewEvent
+        event: ReviewEvent,
+        body: string
       ) => {
         if (review_id) {
           await octokit.pulls.updateReview({
@@ -70,11 +70,13 @@ export const bot: ApplicationFunction = (app) => {
 
         const playlistLookupResults = await Promise.all(
           filesToVerify.map(async ({ filename }) => {
-            const filenameWithoutPath = removePathFromFilename(filename);
+            const filenameWithoutRegistryPath = removeRegistryPathFromFilename(
+              filename
+            ).replace('https:/', 'https://');
 
-            const url = getPlaylistIdFromUrl(filename)
+            const url = getPlaylistIdFromUrl(filenameWithoutRegistryPath)
               ? filename
-              : `https://open.spotify.com/playlist/${filenameWithoutPath}`;
+              : `https://open.spotify.com/playlist/${filenameWithoutRegistryPath}`;
 
             const spotifyResponse = await fetch(url);
             const expectedStatusCodes = [200, 404];
@@ -99,7 +101,7 @@ export const bot: ApplicationFunction = (app) => {
             }
 
             return {
-              filename: removePathFromFilename(filename),
+              filename: filenameWithoutRegistryPath,
               found,
               info,
               url
@@ -107,32 +109,13 @@ export const bot: ApplicationFunction = (app) => {
           })
         );
 
+        let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
+        let reviewEvent: ReviewEvent = 'APPROVE';
+
+        let identifiedPlaylistsText = '';
         const validEntries = playlistLookupResults.filter(
           ({ found, filename }) => found && !filename.includes(siQueryStart)
         );
-
-        const entriesToRename = playlistLookupResults.filter(
-          ({ found, filename }) =>
-            found &&
-            (filename.includes(siQueryStart) || getPlaylistIdFromUrl(filename))
-        );
-
-        const notFoundPlaylists = playlistLookupResults.filter(
-          ({ found }) => !found
-        );
-
-        const { data: priorReviews } = await octokit.pulls.listReviews({
-          ...workingRepo,
-          pull_number
-        });
-
-        const [existingReview] = priorReviews;
-
-        let identifiedPlaylistsText = '';
-        let renameRequiredText = '';
-        let notFoundText = '';
-        let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
-        let reviewEvent: ReviewEvent = 'APPROVE';
 
         if (validEntries.length > 0) {
           const playlistLinks = validEntries
@@ -142,11 +125,19 @@ export const bot: ApplicationFunction = (app) => {
           identifiedPlaylistsText = `### ✅ These playlists have been indentified:\n${playlistLinks}`;
         }
 
+        let renameRequiredText = '';
+        const entriesToRename = playlistLookupResults.filter(
+          ({ found, filename }) =>
+            found &&
+            (filename.includes(siQueryStart) || getPlaylistIdFromUrl(filename))
+        );
+
         if (entriesToRename.length > 0) {
           const renameList = entriesToRename
             .map(({ filename }) => {
               const playlistIdFromPossibleUrl = getPlaylistIdFromUrl(filename);
-              const filenameWithoutPath = removePathFromFilename(filename);
+              const filenameWithoutPath =
+                removeRegistryPathFromFilename(filename);
 
               const targetFilename =
                 playlistIdFromPossibleUrl ||
@@ -160,6 +151,11 @@ export const bot: ApplicationFunction = (app) => {
           reviewEvent = 'REQUEST_CHANGES';
           renameRequiredText = `### ⚠️ These entries have to be renamed:\n${renameList}`;
         }
+
+        let notFoundText = '';
+        const notFoundPlaylists = playlistLookupResults.filter(
+          ({ found }) => !found
+        );
 
         if (notFoundPlaylists.length > 0) {
           const renameList = notFoundPlaylists
@@ -180,16 +176,20 @@ export const bot: ApplicationFunction = (app) => {
           .filter(Boolean)
           .join('\n\n');
 
-        await upsertReview(existingReview?.id, reviewBody, reviewEvent);
+        const { data: reviews } = await octokit.pulls.listReviews({
+          ...workingRepo,
+          pull_number
+        });
+        const [existingReview] = reviews;
+
+        await upsertReview(existingReview?.id, reviewEvent, reviewBody);
       } catch (error) {
         console.error(error);
-
-        await octokit.pulls.createReview({
-          ...workingRepo,
-          pull_number,
-          event: 'COMMENT',
-          body: `Something went wrong while validating new entries! @${workingRepo.owner} should handle it shortly...`
-        });
+        await upsertReview(
+          undefined,
+          'COMMENT',
+          `Something went wrong while validating new entries! @${workingRepo.owner} should handle it shortly...`
+        );
       }
     }
   );
