@@ -141,7 +141,7 @@ export const bot: ApplicationFunction = (app) => {
 
               const targetFilename =
                 playlistIdFromPossibleUrl ||
-                filenameWithoutPath.replace(siQueryStart, '');
+                filenameWithoutPath.split(siQueryStart)[0];
 
               return `- From ${filenameWithoutPath} to **${targetFilename}**`;
             })
