@@ -1,19 +1,21 @@
 import { ApplicationFunction } from 'probot';
 import getMetaData from 'metadata-scraper';
 
+import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
+
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
-const bot: ApplicationFunction = (app) => {
+export const bot: ApplicationFunction = (app) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
-    async (context) => {
+    async ({ payload, octokit }) => {
       const registryDirectoryPath = 'playlists/registry/';
       const siQueryStart = '?si=';
 
-      const pull_number = context.payload.number;
+      const pull_number = payload.number;
       const workingRepo = {
-        owner: context.payload.repository.owner.login,
-        repo: context.payload.repository.name
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name
       };
 
       const repoAllowlist = [
@@ -30,14 +32,14 @@ const bot: ApplicationFunction = (app) => {
         event: ReviewEvent
       ) => {
         if (review_id) {
-          await context.octokit.pulls.updateReview({
+          await octokit.pulls.updateReview({
             ...workingRepo,
             pull_number,
             review_id,
             body
           });
         } else {
-          await context.octokit.pulls.createReview({
+          await octokit.pulls.createReview({
             ...workingRepo,
             pull_number,
             event,
@@ -54,7 +56,7 @@ const bot: ApplicationFunction = (app) => {
 
         if (!isAllowlistedRepo) return;
 
-        const { data: prFiles } = await context.octokit.pulls.listFiles({
+        const { data: prFiles } = await octokit.pulls.listFiles({
           ...workingRepo,
           pull_number
         });
@@ -69,18 +71,22 @@ const bot: ApplicationFunction = (app) => {
         const playlistLookupResults = await Promise.all(
           filesToVerify.map(async ({ filename }) => {
             const filenameWithoutPath = removePathFromFilename(filename);
-            const url = `https://open.spotify.com/playlist/${filenameWithoutPath}`;
-            const expectedStatusCodes = [200, 404];
+
+            const url = getPlaylistIdFromUrl(filename)
+              ? filename
+              : `https://open.spotify.com/playlist/${filenameWithoutPath}`;
 
             const spotifyResponse = await fetch(url);
+            const expectedStatusCodes = [200, 404];
 
-            if (!expectedStatusCodes.includes(spotifyResponse.status))
+            if (!expectedStatusCodes.includes(spotifyResponse.status)) {
               throw new Error(
-                `${spotifyResponse.url} responded with code ${spotifyResponse.status}`
+                `${spotifyResponse.url} responded with ${spotifyResponse.status}`
               );
+            }
 
             const found = spotifyResponse.status === 200;
-            let info: string | null = null;
+            let info = '';
 
             if (found) {
               const html = await spotifyResponse.text();
@@ -105,15 +111,17 @@ const bot: ApplicationFunction = (app) => {
           ({ found, filename }) => found && !filename.includes(siQueryStart)
         );
 
-        const entriesWithSiQuery = playlistLookupResults.filter(
-          ({ found, filename }) => found && filename.includes(siQueryStart)
+        const entriesToRename = playlistLookupResults.filter(
+          ({ found, filename }) =>
+            found &&
+            (filename.includes(siQueryStart) || getPlaylistIdFromUrl(filename))
         );
 
         const notFoundPlaylists = playlistLookupResults.filter(
           ({ found }) => !found
         );
 
-        const { data: priorReviews } = await context.octokit.pulls.listReviews({
+        const { data: priorReviews } = await octokit.pulls.listReviews({
           ...workingRepo,
           pull_number
         });
@@ -134,21 +142,15 @@ const bot: ApplicationFunction = (app) => {
           identifiedPlaylistsText = `### ✅ These playlists have been indentified:\n${playlistLinks}`;
         }
 
-        if (notFoundPlaylists.length > 0) {
-          const renameList = notFoundPlaylists
-            .map(({ filename }) => `- ${filename}`)
-            .join('\n');
-
-          successText = '';
-          reviewEvent = 'REQUEST_CHANGES';
-          notFoundText = `### ❌ Playlists for these entries don't exist:\n${renameList}`;
-        }
-
-        if (entriesWithSiQuery.length > 0) {
-          const renameList = entriesWithSiQuery
+        if (entriesToRename.length > 0) {
+          const renameList = entriesToRename
             .map(({ filename }) => {
+              const playlistIdFromPossibleUrl = getPlaylistIdFromUrl(filename);
               const filenameWithoutPath = removePathFromFilename(filename);
-              const [targetFilename] = filenameWithoutPath.split(siQueryStart);
+
+              const targetFilename =
+                playlistIdFromPossibleUrl ||
+                filenameWithoutPath.replace(siQueryStart, '');
 
               return `- From ${filenameWithoutPath} to **${targetFilename}**`;
             })
@@ -157,6 +159,16 @@ const bot: ApplicationFunction = (app) => {
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
           renameRequiredText = `### ⚠️ These entries have to be renamed:\n${renameList}`;
+        }
+
+        if (notFoundPlaylists.length > 0) {
+          const renameList = notFoundPlaylists
+            .map(({ filename }) => `- ${filename}`)
+            .join('\n');
+
+          successText = '';
+          reviewEvent = 'REQUEST_CHANGES';
+          notFoundText = `### ❌ Playlists for these entries don't exist:\n${renameList}`;
         }
 
         const reviewBody = [
@@ -172,7 +184,7 @@ const bot: ApplicationFunction = (app) => {
       } catch (error) {
         console.error(error);
 
-        await context.octokit.pulls.createReview({
+        await octokit.pulls.createReview({
           ...workingRepo,
           pull_number,
           event: 'COMMENT',
@@ -182,5 +194,3 @@ const bot: ApplicationFunction = (app) => {
     }
   );
 };
-
-export = bot;
