@@ -109,6 +109,8 @@ export const bot: ApplicationFunction = (app) => {
           })
         );
 
+        console.log(playlistLookupResults);
+
         let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
         let reviewEvent: ReviewEvent = 'APPROVE';
 
