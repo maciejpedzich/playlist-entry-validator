@@ -161,7 +161,7 @@ export const bot: ApplicationFunction = (app) => {
         if (urlFilenameEntries.length > 0) {
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          urlEntriesToRenameText = `### ⚠️ It looks like you've tried pasting playlist URL(s) for certain entries.\nBefore you try again, you'll have to remove the \`https:\` folder. If you don't know how to grab a playlist ID from a link, use [this tool](https://spotifyplaylistarchive.com/get-playlist-id).`;
+          urlEntriesToRenameText = `### ⚠️ It looks like you've tried pasting playlist URLs for certain entries\nBefore you try again, you'll have to remove the \`https:\` folder. If you don't know how to grab a playlist ID from a link, use [this tool](https://spotifyplaylistarchive.com/get-playlist-id).`;
         }
 
         let notFoundText = '';
