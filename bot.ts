@@ -125,31 +125,43 @@ export const bot: ApplicationFunction = (app) => {
           identifiedPlaylistsText = `### ✅ These playlists have been indentified:\n${playlistLinks}`;
         }
 
-        let renameRequiredText = '';
-        const entriesToRename = playlistLookupResults.filter(
+        let onlyRenameRequiredText = '';
+        const entriesToOnlyRename = playlistLookupResults.filter(
           ({ found, filename }) =>
             found &&
-            (filename.includes(siQueryStart) || getPlaylistIdFromUrl(filename))
+            filename.includes(siQueryStart) &&
+            !getPlaylistIdFromUrl(filename)
         );
 
-        if (entriesToRename.length > 0) {
-          const renameList = entriesToRename
+        if (entriesToOnlyRename.length > 0) {
+          const renameList = entriesToOnlyRename
             .map(({ filename }) => {
-              const playlistIdFromPossibleUrl = getPlaylistIdFromUrl(filename);
-              const filenameWithoutPath =
+              const filenameWithoutRegistryPath =
                 removeRegistryPathFromFilename(filename);
 
-              const targetFilename =
-                playlistIdFromPossibleUrl ||
-                filenameWithoutPath.split(siQueryStart)[0];
+              const [targetFilename] =
+                filenameWithoutRegistryPath.split(siQueryStart);
 
-              return `- From ${filenameWithoutPath} to **${targetFilename}**`;
+              return `- From \`${filenameWithoutRegistryPath}\` to **${targetFilename}**`;
             })
             .join('\n');
 
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          renameRequiredText = `### ⚠️ These entries have to be renamed:\n${renameList}`;
+          onlyRenameRequiredText = `### ⚠️ You have to rename these entries:\n${renameList}`;
+        }
+
+        let urlEntriesToRenameText = '';
+        const urlFilenameEntries = playlistLookupResults.filter(
+          ({ found, filename }) => {
+            found && getPlaylistIdFromUrl(filename);
+          }
+        );
+
+        if (urlFilenameEntries.length > 0) {
+          successText = '';
+          reviewEvent = 'REQUEST_CHANGES';
+          urlEntriesToRenameText = `### ⚠️ It looks like you've tried pasting playlist URL(s) for certain entries.\nBefore you try again, you'll have to remove the \`https:\` folder. If you don't know how to grab a playlist ID from a link, use [this tool](https://spotifyplaylistarchive.com/get-playlist-id).`;
         }
 
         let notFoundText = '';
@@ -164,12 +176,13 @@ export const bot: ApplicationFunction = (app) => {
 
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          notFoundText = `### ❌ Playlists for these entries don't exist:\n${renameList}`;
+          notFoundText = `### ❌ These entries don't point to any existing public playlists:\n${renameList}`;
         }
 
         const reviewBody = [
           identifiedPlaylistsText,
-          renameRequiredText,
+          onlyRenameRequiredText,
+          urlEntriesToRenameText,
           notFoundText,
           successText
         ]
