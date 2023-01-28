@@ -155,9 +155,7 @@ export const bot: ApplicationFunction = (app) => {
 
         let urlEntriesToRenameText = '';
         const urlFilenameEntries = playlistLookupResults.filter(
-          ({ found, filename, url }) => {
-            found && filename === url;
-          }
+          ({ found, filename, url }) => found && filename === url
         );
 
         if (urlFilenameEntries.length > 0) {
