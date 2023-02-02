@@ -114,7 +114,8 @@ export const bot: ApplicationFunction = (app) => {
 
         let identifiedPlaylistsText = '';
         const validEntries = playlistLookupResults.filter(
-          ({ found, filename }) => found && !filename.includes(siQueryStart)
+          ({ found, filename, url }) =>
+            found && !filename.includes(siQueryStart) && filename !== url
         );
 
         if (validEntries.length > 0) {
@@ -159,16 +160,19 @@ export const bot: ApplicationFunction = (app) => {
         if (urlFilenameEntries.length > 0) {
           successText = '';
 
-          const baseUrl = `${payload.pull_request.head.repo.html_url}/new/main/playlists/registry/FOO`;
+          const forkPageUrl = payload.pull_request.head.repo.html_url;
+          const httpsDirUrl = `${forkPageUrl}/tree/main/playlists/registry/https:`;
+
+          const baseCreateUrl = `${forkPageUrl}/new/main/playlists/registry/FOO`;
           const linkList = urlFilenameEntries.map(({ url }) => {
             const playlistId = getPlaylistIdFromUrl(url);
-            const createFilePageUrl = `${baseUrl}?filename=${playlistId}&value=REMOVE%20THIS%20TEXT%20FIRST`;
+            const createFilePageUrl = `${baseCreateUrl}?filename=${playlistId}&value=REMOVE%20THIS%20TEXT%20FIRST`;
 
             return `\t- [Create \`${playlistId}\`](${createFilePageUrl})`;
           });
 
           reviewEvent = 'REQUEST_CHANGES';
-          urlEntriesToRenameText = `### ⚠️ Some entries are malformed playlist URLs\n\nHere's how you can correct them:\n\n1. Remove the \`https:\` folder\n\n2. Use the links below to create valid entries:\n${linkList}`;
+          urlEntriesToRenameText = `### ⚠️ Some entries are malformed playlist URLs\n\nHere's how you can correct them:\n\n1. Go to [the \`https:\` folder](${httpsDirUrl}), click on the three dots on the right-hand side, and choose _Delete directory_\n\n2. Use the links below to create valid entries:\n${linkList}`;
         }
 
         let notFoundText = '';
