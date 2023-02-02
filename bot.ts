@@ -88,7 +88,7 @@ export const bot: ApplicationFunction = (app) => {
             }
 
             const found = spotifyResponse.status === 200;
-            let info = '';
+            let details = '';
 
             if (found) {
               const html = await spotifyResponse.text();
@@ -97,19 +97,17 @@ export const bot: ApplicationFunction = (app) => {
                 .split(' · ')
                 .filter((text) => text !== 'Playlist');
 
-              info = [title, ...playlistMeta].join(' · ');
+              details = [title, ...playlistMeta].join(' · ');
             }
 
             return {
               filename: filenameWithoutRegistryPath,
               found,
-              info,
+              details,
               url
             };
           })
         );
-
-        console.log(playlistLookupResults);
 
         let successText = `🎉 @${workingRepo.owner} can merge your pull request! 🎉`;
         let reviewEvent: ReviewEvent = 'APPROVE';
@@ -121,22 +119,22 @@ export const bot: ApplicationFunction = (app) => {
 
         if (validEntries.length > 0) {
           const playlistLinks = validEntries
-            .map(({ url, info }) => `- [${info}](${url})`)
+            .map(({ url, details }) => `- [${details}](${url})`)
             .join('\n');
 
           identifiedPlaylistsText = `### ✅ These playlists have been indentified:\n${playlistLinks}`;
         }
 
-        let onlyRenameRequiredText = '';
-        const entriesToOnlyRename = playlistLookupResults.filter(
+        let renameRequiredText = '';
+        const entriesToRename = playlistLookupResults.filter(
           ({ found, filename }) =>
             found &&
             filename.includes(siQueryStart) &&
             !getPlaylistIdFromUrl(filename)
         );
 
-        if (entriesToOnlyRename.length > 0) {
-          const renameList = entriesToOnlyRename
+        if (entriesToRename.length > 0) {
+          const renameList = entriesToRename
             .map(({ filename }) => {
               const filenameWithoutRegistryPath =
                 removeRegistryPathFromFilename(filename);
@@ -150,18 +148,27 @@ export const bot: ApplicationFunction = (app) => {
 
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          onlyRenameRequiredText = `### ⚠️ You have to rename these entries:\n${renameList}`;
+          renameRequiredText = `### ⚠️ You have to rename these entries:\n${renameList}`;
         }
 
         let urlEntriesToRenameText = '';
         const urlFilenameEntries = playlistLookupResults.filter(
-          ({ found, filename, url }) => found && filename === url
+          ({ filename, url }) => filename === url
         );
 
         if (urlFilenameEntries.length > 0) {
           successText = '';
+
+          const baseUrl = `${payload.pull_request.head.repo.html_url}/new/main/playlists/registry/FOO`;
+          const linkList = urlFilenameEntries.map(({ url }) => {
+            const playlistId = getPlaylistIdFromUrl(url);
+            const createFilePageUrl = `${baseUrl}?filename=${playlistId}&value=REMOVE%20THIS%20TEXT%20FIRST)`;
+
+            return `\t- [Create \`${playlistId}\`](${createFilePageUrl})`;
+          });
+
           reviewEvent = 'REQUEST_CHANGES';
-          urlEntriesToRenameText = `### ⚠️ It looks like you've tried pasting playlist URLs for certain entries\nBefore you try again, you'll have to remove the \`https:\` folder. If you don't know how to grab a playlist ID from a link, use [this tool](https://spotifyplaylistarchive.com/get-playlist-id).`;
+          urlEntriesToRenameText = `### ⚠️ Some of the entries are malformed playlist URLs\n\nHere's how you can correct them:\n\n1. Remove the \`https:\` folder\n\n2. Use the links below to create valid entries:\n${linkList}`;
         }
 
         let notFoundText = '';
@@ -170,18 +177,18 @@ export const bot: ApplicationFunction = (app) => {
         );
 
         if (notFoundPlaylists.length > 0) {
-          const renameList = notFoundPlaylists
+          const notFoundList = notFoundPlaylists
             .map(({ filename }) => `- ${filename}`)
             .join('\n');
 
           successText = '';
           reviewEvent = 'REQUEST_CHANGES';
-          notFoundText = `### ❌ These entries don't point to any existing public playlists:\n${renameList}`;
+          notFoundText = `### ❌ These entries don't point to any existing public playlists:\n${notFoundList}`;
         }
 
         const reviewBody = [
           identifiedPlaylistsText,
-          onlyRenameRequiredText,
+          renameRequiredText,
           urlEntriesToRenameText,
           notFoundText,
           successText
