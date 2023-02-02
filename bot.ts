@@ -162,7 +162,7 @@ export const bot: ApplicationFunction = (app) => {
           const baseUrl = `${payload.pull_request.head.repo.html_url}/new/main/playlists/registry/FOO`;
           const linkList = urlFilenameEntries.map(({ url }) => {
             const playlistId = getPlaylistIdFromUrl(url);
-            const createFilePageUrl = `${baseUrl}?filename=${playlistId}&value=REMOVE%20THIS%20TEXT%20FIRST)`;
+            const createFilePageUrl = `${baseUrl}?filename=${playlistId}&value=REMOVE%20THIS%20TEXT%20FIRST`;
 
             return `\t- [Create \`${playlistId}\`](${createFilePageUrl})`;
           });
