@@ -168,7 +168,7 @@ export const bot: ApplicationFunction = (app) => {
           });
 
           reviewEvent = 'REQUEST_CHANGES';
-          urlEntriesToRenameText = `### ⚠️ Some of the entries are malformed playlist URLs\n\nHere's how you can correct them:\n\n1. Remove the \`https:\` folder\n\n2. Use the links below to create valid entries:\n${linkList}`;
+          urlEntriesToRenameText = `### ⚠️ Some entries are malformed playlist URLs\n\nHere's how you can correct them:\n\n1. Remove the \`https:\` folder\n\n2. Use the links below to create valid entries:\n${linkList}`;
         }
 
         let notFoundText = '';
