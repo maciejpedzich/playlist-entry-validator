@@ -18,11 +18,6 @@ export const bot: ApplicationFunction = (app) => {
         repo: payload.repository.name
       };
 
-      const repoAllowlist = [
-        { owner: 'mackorone', repo: 'spotify-playlist-archive' },
-        { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
-      ];
-
       const removeRegistryPathFromFilename = (filename: string) =>
         filename.replace(registryDirectoryPath, '');
 
@@ -49,6 +44,11 @@ export const bot: ApplicationFunction = (app) => {
       };
 
       try {
+        const repoAllowlist = [
+          { owner: 'mackorone', repo: 'spotify-playlist-archive' },
+          { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
+        ];
+
         const isAllowlistedRepo = repoAllowlist.find(
           ({ owner, repo }) =>
             workingRepo.owner === owner && workingRepo.repo === repo
@@ -63,12 +63,13 @@ export const bot: ApplicationFunction = (app) => {
 
         const filesToVerify = prFiles.filter(
           ({ status, filename }) =>
-            status === 'added' && filename.startsWith(registryDirectoryPath)
+            filename.startsWith(registryDirectoryPath) &&
+            ['added', 'modified'].includes(status)
         );
 
         if (filesToVerify.length === 0) return;
 
-        const playlistLookupResults = await Promise.all(
+        const playlistSearchResults = await Promise.all(
           filesToVerify.map(async ({ filename }) => {
             const filenameWithoutRegistryPath = removeRegistryPathFromFilename(
               filename
@@ -79,12 +80,10 @@ export const bot: ApplicationFunction = (app) => {
               : `https://open.spotify.com/playlist/${filenameWithoutRegistryPath}`;
 
             const spotifyResponse = await fetch(url);
-            const expectedStatusCodes = [200, 404];
+            const expectedStatusCodes = [200, 400, 404];
 
             if (!expectedStatusCodes.includes(spotifyResponse.status)) {
-              throw new Error(
-                `${spotifyResponse.url} responded with ${spotifyResponse.status}`
-              );
+              throw new Error(`Spotify ${spotifyResponse.status}`);
             }
 
             const found = spotifyResponse.status === 200;
@@ -113,7 +112,7 @@ export const bot: ApplicationFunction = (app) => {
         let reviewEvent: ReviewEvent = 'APPROVE';
 
         let identifiedPlaylistsText = '';
-        const validEntries = playlistLookupResults.filter(
+        const validEntries = playlistSearchResults.filter(
           ({ found, filename, url }) =>
             found && !filename.includes(siQueryStart) && filename !== url
         );
@@ -127,7 +126,7 @@ export const bot: ApplicationFunction = (app) => {
         }
 
         let renameRequiredText = '';
-        const entriesToRename = playlistLookupResults.filter(
+        const entriesToRename = playlistSearchResults.filter(
           ({ found, filename }) =>
             found &&
             filename.includes(siQueryStart) &&
@@ -153,7 +152,7 @@ export const bot: ApplicationFunction = (app) => {
         }
 
         let urlEntriesToRenameText = '';
-        const urlFilenameEntries = playlistLookupResults.filter(
+        const urlFilenameEntries = playlistSearchResults.filter(
           ({ filename, url }) => filename === url
         );
 
@@ -176,7 +175,7 @@ export const bot: ApplicationFunction = (app) => {
         }
 
         let notFoundText = '';
-        const notFoundPlaylists = playlistLookupResults.filter(
+        const notFoundPlaylists = playlistSearchResults.filter(
           ({ found }) => !found
         );
 
