@@ -1,11 +1,11 @@
-import { ApplicationFunction } from 'probot';
 import getMetaData from 'metadata-scraper';
 
 import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
+import { Probot } from 'probot';
 
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
-export const appFn: ApplicationFunction = (app) => {
+export const appFn = (app: Probot) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit }) => {
