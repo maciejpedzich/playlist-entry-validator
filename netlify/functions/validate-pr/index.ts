@@ -1,4 +1,4 @@
-process.chdir('/var/task/dist/netlify/functions/validate-pr');
+process.chdir('/var/runtime');
 
 import {
   createProbot,
