@@ -1,6 +1,6 @@
 import { readdirSync } from 'fs';
 
-console.log(readdirSync('/var/task'));
+console.log('/var/runtime:\n' + readdirSync('/var/runtime'));
 
 process.chdir('/var/runtime');
 
