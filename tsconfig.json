@@ -3,7 +3,6 @@
     "target": "esnext",
     "module": "commonjs",
     "rootDir": "./",
-    "outDir": "./netlify/functions",
     "noEmit": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
