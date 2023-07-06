@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/maciejpedzich/mackorone-playlist-pr-bot#readme",
   "dependencies": {
-    "@netlify/functions": "github:netlify/functions",
     "@probot/adapter-aws-lambda-serverless": "^3.0.3",
     "metadata-scraper": "^0.2.60",
     "probot": "^12.2.8"
