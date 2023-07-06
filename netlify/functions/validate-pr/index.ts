@@ -1,8 +1,8 @@
 import { readdirSync } from 'fs';
 
-console.log('/var/runtime:\n' + readdirSync('/var/runtime'));
+console.log(readdirSync('/var/task/netlify/functions/validate-pr'));
 
-process.chdir('/var/runtime');
+process.chdir('/var/task/netlify/functions/validate-pr');
 
 import {
   createProbot,
