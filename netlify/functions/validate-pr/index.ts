@@ -1,3 +1,5 @@
+process.chdir('/var/task/dist/netlify/functions/validate-pr');
+
 import {
   createProbot,
   createLambdaFunction
