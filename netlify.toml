@@ -1,0 +1,2 @@
+[functions]
+  external_node_modules = ["@probot/adapter-aws-lambda-serverless", "probot", "express", "keyv", "formidable"]
