@@ -5,7 +5,7 @@ import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
 
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
-export const bot: ApplicationFunction = (app) => {
+export const appFn: ApplicationFunction = (app) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit }) => {
