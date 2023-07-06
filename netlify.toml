@@ -1,2 +1,3 @@
 [functions]
+  included_files = ["appFn.ts", "getPlaylistIdFromUrl.ts"]
   external_node_modules = ["@probot/adapter-aws-lambda-serverless", "probot", "express", "keyv", "formidable"]
