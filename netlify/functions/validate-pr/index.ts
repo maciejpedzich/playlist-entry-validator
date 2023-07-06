@@ -1,9 +1,3 @@
-import { readdirSync } from 'fs';
-
-console.log(readdirSync('/var/task'));
-
-process.chdir('/var/task');
-
 import {
   createProbot,
   createLambdaFunction
