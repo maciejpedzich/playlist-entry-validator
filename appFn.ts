@@ -1,7 +1,7 @@
+import { Probot } from 'probot';
 import getMetaData from 'metadata-scraper';
 
 import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
-import { Probot } from 'probot';
 
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
