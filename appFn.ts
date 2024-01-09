@@ -96,7 +96,7 @@ export const appFn = (app: Probot) => {
                 .split(' · ')
                 .filter((text) => text !== 'Playlist');
 
-              details = [title, ...playlistMeta].join(' · ');
+              details = playlistMeta.join(' · ');
             }
 
             return {
