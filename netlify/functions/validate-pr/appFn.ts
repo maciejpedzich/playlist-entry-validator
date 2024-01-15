@@ -9,6 +9,8 @@ const appFn = (app: Probot) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit }) => {
+      console.log('Pull Request Handler triggered');
+
       const registryDirectoryPath = 'playlists/registry/';
       const siQueryStart = '?si=';
 
