@@ -3,7 +3,7 @@ import {
   createLambdaFunction
 } from '@probot/adapter-aws-lambda-serverless';
 
-import { appFn } from '../../../appFn';
+import { appFn } from './appFn';
 
 const privateKey = (process.env.PRIVATE_KEY as string).replace(/\\n/gm, '\n');
 
