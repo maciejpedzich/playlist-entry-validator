@@ -93,7 +93,7 @@ const appFn = (app: Probot) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const { description } = await getMetaData({ html });
+              const { title, description } = await getMetaData({ html });
               const playlistMeta = (description || '')
                 .split(' · ')
                 .filter((text) => text !== 'Playlist');
