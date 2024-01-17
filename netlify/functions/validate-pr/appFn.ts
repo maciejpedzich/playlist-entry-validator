@@ -99,7 +99,7 @@ const appFn = (app: Probot) => {
                 .filter((text) => text !== 'Playlist');
 
               console.log(details);
-              details = playlistMeta.join(' · ');
+              details = [title, ...playlistMeta].join(' · ');
             }
 
             return {
