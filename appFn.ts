@@ -8,9 +8,7 @@ type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 const appFn = (app: Probot) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
-    async ({ payload, octokit }) => {
-      console.log('Pull Request Handler triggered');
-
+    async ({ payload, octokit, log }) => {
       const registryDirectoryPath = 'playlists/registry/';
       const siQueryStart = '?si=';
 
@@ -93,13 +91,12 @@ const appFn = (app: Probot) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const { title, description } = await getMetaData({ html });
+              const { description } = await getMetaData({ html });
               const playlistMeta = (description || '')
                 .split(' · ')
                 .filter((text) => text !== 'Playlist');
 
-              console.log(details);
-              details = [title, ...playlistMeta].join(' · ');
+              details = playlistMeta.join(' · ');
             }
 
             return {
@@ -209,8 +206,10 @@ const appFn = (app: Probot) => {
         const [existingReview] = reviews;
 
         await upsertReview(existingReview?.id, reviewEvent, reviewBody);
-      } catch (error) {
-        console.error(error);
+      } catch (e) {
+        const error = e as Error;
+
+        log.error({ stack: error?.stack }, error.message);
         await upsertReview(
           undefined,
           'COMMENT',
