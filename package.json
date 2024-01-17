@@ -4,6 +4,7 @@
   "description": "GitHub bot that automatically verifies PRs with new playlist entries",
   "scripts": {
     "build": "tsc",
+    "prestart": "tsc",
     "start": "node ./dist/index.js"
   },
   "repository": {
