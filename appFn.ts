@@ -45,12 +45,12 @@ const appFn = (app: Probot) => {
         }
       };
 
-      try {
-        const repoAllowlist = [
-          { owner: 'mackorone', repo: 'spotify-playlist-archive' },
-          { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
-        ];
+      const repoAllowlist = [
+        { owner: 'mackorone', repo: 'spotify-playlist-archive' },
+        { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
+      ];
 
+      try {
         const isAllowlistedRepo = repoAllowlist.find(
           ({ owner, repo }) =>
             workingRepo.owner === owner && workingRepo.repo === repo
@@ -221,4 +221,4 @@ const appFn = (app: Probot) => {
   );
 };
 
-export { appFn };
+export = appFn;
