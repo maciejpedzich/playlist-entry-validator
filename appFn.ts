@@ -1,11 +1,14 @@
-import { Probot } from 'probot';
+import { ApplicationFunction, Probot } from 'probot';
 import getMetaData from 'metadata-scraper';
 
 import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
 
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
-const appFn = (app: Probot) => {
+const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
+  const router = getRouter!('/ping');
+  router.get('/pong', (req, res) => res.sendStatus(200));
+
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit, log }) => {
