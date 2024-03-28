@@ -97,10 +97,18 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const { description } = await getMetaData({ html });
+              const { title, description } = await getMetaData({ html });
+
+              const author = title?.endsWith('Spotify Playlist')
+                ? 'Spotify'
+                : title?.match(/(?<=\- playlist by )(.*?)(?= \|)/gm) ?? [
+                    'FAILED TO EXTRACT AUTHOR'
+                  ];
+
               const playlistMeta = (description || '')
                 .split(' · ')
-                .filter((text) => text !== 'Playlist');
+                .filter((text) => text !== 'Playlist')
+                .concat(author);
 
               details = playlistMeta.join(' · ');
             }
