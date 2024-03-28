@@ -1,4 +1,5 @@
 import { ApplicationFunction, Probot } from 'probot';
+import { throttleAll } from 'promise-throttle-all';
 import getMetaData from 'metadata-scraper';
 
 import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
@@ -72,8 +73,9 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
         if (filesToVerify.length === 0) return;
 
-        const playlistSearchResults = await Promise.all(
-          filesToVerify.map(async ({ filename }) => {
+        const playlistSearchResults = await throttleAll(
+          3,
+          filesToVerify.map(({ filename }) => async () => {
             const filenameWithoutRegistryPath = removeRegistryPathFromFilename(
               filename
             ).replace('https:/', 'https://');
@@ -85,9 +87,10 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
             const spotifyResponse = await fetch(url);
             const expectedStatusCodes = [200, 400, 404];
 
-            if (!expectedStatusCodes.includes(spotifyResponse.status)) {
-              throw new Error(`Spotify ${spotifyResponse.status}`);
-            }
+            if (!expectedStatusCodes.includes(spotifyResponse.status))
+              throw new Error(
+                `Spotify responded with a ${spotifyResponse.status} status code`
+              );
 
             const found = spotifyResponse.status === 200;
             let details = '';

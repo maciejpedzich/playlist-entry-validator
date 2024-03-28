@@ -18,7 +18,8 @@
   "homepage": "https://github.com/maciejpedzich/mackorone-playlist-pr-bot#readme",
   "dependencies": {
     "metadata-scraper": "^0.2.60",
-    "probot": "^12.3.3"
+    "probot": "^12.3.3",
+    "promise-throttle-all": "^1.1.1"
   },
   "engines": {
     "node": ">=18"
