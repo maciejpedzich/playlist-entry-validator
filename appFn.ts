@@ -74,7 +74,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         if (filesToVerify.length === 0) return;
 
         const playlistSearchResults = await throttleAll(
-          3,
+          1,
           filesToVerify.map(({ filename }) => async () => {
             const filenameWithoutRegistryPath = removeRegistryPathFromFilename(
               filename
@@ -89,7 +89,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
             if (!expectedStatusCodes.includes(spotifyResponse.status))
               throw new Error(
-                `Spotify responded with a ${spotifyResponse.status} status code`
+                `Received ${spotifyResponse.status} status code from playlist page response`
               );
 
             const found = spotifyResponse.status === 200;
@@ -97,18 +97,48 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const { title, description } = await getMetaData({ html });
+              const {
+                title,
+                author: authorUrl,
+                description
+              } = await getMetaData({
+                html,
+                customRules: {
+                  author: {
+                    rules: [
+                      [
+                        'meta[name="music:creator"]',
+                        (e) => e.getAttribute('content')
+                      ]
+                    ]
+                  }
+                }
+              });
 
-              const author = title?.endsWith('Spotify Playlist')
+              let authorName = (authorUrl as string).endsWith('/user/spotify')
                 ? 'Spotify'
-                : title?.match(/(?<=\- playlist by )(.*?)(?= \|)/gm) ?? [
-                    'FAILED TO EXTRACT AUTHOR'
-                  ];
+                : '';
+
+              if (authorName === '') {
+                const playlistAuthorResponse = await fetch(authorUrl as string);
+
+                if (!playlistAuthorResponse.ok)
+                  throw new Error(
+                    `Received ${playlistAuthorResponse.status} status code from author page response`
+                  );
+
+                const authorPageHtml = await playlistAuthorResponse.text();
+                const { title: authorPageTitle } = await getMetaData({
+                  html: authorPageHtml
+                });
+
+                authorName = authorPageTitle as string;
+              }
 
               const playlistMeta = (description || '')
                 .split(' · ')
                 .filter((text) => text !== 'Playlist')
-                .concat(author);
+                .concat(authorName as string);
 
               details = playlistMeta.join(' · ');
             }
