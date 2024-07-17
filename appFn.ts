@@ -60,10 +60,40 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
         if (!isAllowlistedRepo) return;
 
-        const { data: prFiles } = await octokit.pulls.listFiles({
-          ...workingRepo,
-          pull_number
-        });
+        type PRFileArray = Awaited<
+          ReturnType<typeof octokit.pulls.listFiles>
+        >['data'];
+
+        const sleep = (ms: number) =>
+          new Promise((resolve) => setTimeout(resolve, ms));
+
+        const prFiles: PRFileArray = [];
+        let page = 1;
+        let loadingPages = true;
+        let timeToRateLimitReset = 0;
+
+        while (loadingPages) {
+          await sleep(timeToRateLimitReset);
+
+          const { data, headers } = await octokit.pulls.listFiles({
+            ...workingRepo,
+            pull_number,
+            page
+          });
+
+          prFiles.push(...data);
+
+          let now = Date.now();
+          timeToRateLimitReset =
+            headers['x-ratelimit-remaining'] !== '0'
+              ? 0
+              : (Number(headers['x-ratelimit-reset']) || now) - now;
+
+          if (headers.link?.includes(`rel=\"next\"`)) page++;
+          else loadingPages = false;
+        }
+
+        console.log('Total entries: ' + prFiles.length);
 
         const filesToVerify = prFiles.filter(
           ({ status, filename }) =>
@@ -97,11 +127,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const {
-                title,
-                author: authorUrl,
-                description
-              } = await getMetaData({
+              const { author: authorUrl, description } = await getMetaData({
                 html,
                 customRules: {
                   author: {
