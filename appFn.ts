@@ -1,3 +1,4 @@
+import { setTimeout } from 'timers/promises';
 import { ApplicationFunction, Probot } from 'probot';
 import { throttleAll } from 'promise-throttle-all';
 import getMetaData from 'metadata-scraper';
@@ -7,8 +8,7 @@ import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
 const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
-  const router = getRouter!('/ping');
-  router.get('/pong', (req, res) => res.sendStatus(200));
+  getRouter!('/ping').get('/pong', (_, res) => res.sendStatus(200));
 
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
@@ -64,16 +64,13 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
           ReturnType<typeof octokit.pulls.listFiles>
         >['data'];
 
-        const sleep = (ms: number) =>
-          new Promise((resolve) => setTimeout(resolve, ms));
-
         const prFiles: PRFileArray = [];
         let page = 1;
-        let loadingPages = true;
+        let isLoadingPages = true;
         let timeToRateLimitReset = 0;
 
-        while (loadingPages) {
-          await sleep(timeToRateLimitReset);
+        while (isLoadingPages) {
+          await setTimeout(timeToRateLimitReset);
 
           const { data, headers } = await octokit.pulls.listFiles({
             ...workingRepo,
@@ -90,10 +87,8 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
               : (Number(headers['x-ratelimit-reset']) || now) - now;
 
           if (headers.link?.includes(`rel=\"next\"`)) page++;
-          else loadingPages = false;
+          else isLoadingPages = false;
         }
-
-        console.log('Total entries: ' + prFiles.length);
 
         const filesToVerify = prFiles.filter(
           ({ status, filename }) =>
@@ -102,6 +97,12 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         );
 
         if (filesToVerify.length === 0) return;
+
+        console.log('Entries to validate: ' + filesToVerify.length);
+
+        let numEntriesBeforeCooldown = 3;
+        let numProcessedEntries = 0;
+        let cooldownTimeout = 1500;
 
         const playlistSearchResults = await throttleAll(
           1,
@@ -114,12 +115,18 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
               ? filenameWithoutRegistryPath
               : `https://open.spotify.com/playlist/${filenameWithoutRegistryPath}`;
 
+            if (
+              numProcessedEntries > 0 &&
+              numProcessedEntries % numEntriesBeforeCooldown === 0
+            )
+              await setTimeout(cooldownTimeout);
+
             const spotifyResponse = await fetch(url);
             const expectedStatusCodes = [200, 400, 404];
 
             if (!expectedStatusCodes.includes(spotifyResponse.status))
               throw new Error(
-                `Received ${spotifyResponse.status} status code from playlist page response`
+                `Received ${spotifyResponse.status} status code from ${url}`
               );
 
             const found = spotifyResponse.status === 200;
@@ -150,7 +157,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
                 if (!playlistAuthorResponse.ok)
                   throw new Error(
-                    `Received ${playlistAuthorResponse.status} status code from author page response`
+                    `Received ${playlistAuthorResponse.status} status code from ${authorUrl}`
                   );
 
                 const authorPageHtml = await playlistAuthorResponse.text();
@@ -168,6 +175,8 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
               details = playlistMeta.join(' · ');
             }
+
+            numProcessedEntries++;
 
             return {
               filename: filenameWithoutRegistryPath,
@@ -283,7 +292,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         await upsertReview(
           undefined,
           'COMMENT',
-          `Something went wrong while validating new entries! @${workingRepo.owner} should handle it shortly...`
+          `Something went wrong while validating new entries! @${workingRepo.owner} should handle it shortly.`
         );
       }
     }
