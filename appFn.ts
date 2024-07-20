@@ -98,8 +98,6 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
         if (filesToVerify.length === 0) return;
 
-        console.log('Entries to validate: ' + filesToVerify.length);
-
         let numEntriesBeforeCooldown = 3;
         let numProcessedEntries = 0;
         let cooldownTimeout = 1500;
