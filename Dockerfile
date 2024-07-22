@@ -8,7 +8,7 @@ FROM node:lts-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV production
 USER node
-COPY --chown=node:node package*.json ./
+COPY package*.json ./
 RUN npm ci --production
 COPY --from=build --chown=node:node /app/dist ./dist
 EXPOSE 3000
