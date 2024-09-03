@@ -236,7 +236,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         if (urlFilenameEntries.length > 0) {
           successText = '';
 
-          const forkPageUrl = payload.pull_request.head.repo.html_url;
+          const forkPageUrl = payload.pull_request.head.repo?.html_url;
           const httpsDirUrl = `${forkPageUrl}/tree/main/playlists/registry/https:`;
 
           const baseCreateUrl = `${forkPageUrl}/new/main/playlists/registry/FOO`;
