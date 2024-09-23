@@ -2,6 +2,8 @@
 
 GitHub bot that automatically verifies pull requests with new playlist entries for [spotify-playlist-archive](https://github.com/mackorone/spotify-playlist-archive) repo.
 
+[Example of a validated pull request](https://github.com/mackorone/spotify-playlist-archive/pull/408)
+
 ## Development
 
 ### Prerequisites
