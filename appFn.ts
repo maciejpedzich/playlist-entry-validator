@@ -176,7 +176,13 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
               //   .concat(authorName as string);
 
               // details = playlistMeta.join(' · ');
-              details = title! + '· ' + description;
+              details = (
+                title +
+                ' · ' +
+                description!.replace('Playlist · ', '')
+              )
+                .replace(/\s+/g, ' ')
+                .trim();
             }
 
             numProcessedEntries++;
