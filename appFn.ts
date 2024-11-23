@@ -133,7 +133,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
             if (found) {
               const html = await spotifyResponse.text();
               const {
-                author: authorUrl,
+                // author: authorUrl,
                 description,
                 title
               } = await getMetaData({
@@ -176,7 +176,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
               //   .concat(authorName as string);
 
               // details = playlistMeta.join(' · ');
-              details = title!;
+              details = title! + '· ' + description;
             }
 
             numProcessedEntries++;
