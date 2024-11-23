@@ -132,7 +132,11 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
 
             if (found) {
               const html = await spotifyResponse.text();
-              const { author: authorUrl, description } = await getMetaData({
+              const {
+                author: authorUrl,
+                description,
+                title
+              } = await getMetaData({
                 html,
                 customRules: {
                   author: {
@@ -146,32 +150,33 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
                 }
               });
 
-              let authorName = (authorUrl as string).endsWith('/user/spotify')
-                ? 'Spotify'
-                : '';
+              // let authorName = (authorUrl as string).endsWith('/user/spotify')
+              //   ? 'Spotify'
+              //   : '';
 
-              if (authorName === '') {
-                const playlistAuthorResponse = await fetch(authorUrl as string);
+              // if (authorName === '') {
+              //   const playlistAuthorResponse = await fetch(authorUrl as string);
 
-                if (!playlistAuthorResponse.ok)
-                  throw new Error(
-                    `Received ${playlistAuthorResponse.status} status code from ${authorUrl}`
-                  );
+              //   if (!playlistAuthorResponse.ok)
+              //     throw new Error(
+              //       `Received ${playlistAuthorResponse.status} status code from ${authorUrl}`
+              //     );
 
-                const authorPageHtml = await playlistAuthorResponse.text();
-                const { title: authorPageTitle } = await getMetaData({
-                  html: authorPageHtml
-                });
+              //   const authorPageHtml = await playlistAuthorResponse.text();
+              //   const { title: authorPageTitle } = await getMetaData({
+              //     html: authorPageHtml
+              //   });
 
-                authorName = authorPageTitle as string;
-              }
+              //   authorName = authorPageTitle as string;
+              // }
 
-              const playlistMeta = (description || '')
-                .split(' · ')
-                .filter((text) => text !== 'Playlist')
-                .concat(authorName as string);
+              // const playlistMeta = (description || '')
+              //   .split(' · ')
+              //   .filter((text) => text !== 'Playlist')
+              //   .concat(authorName as string);
 
-              details = playlistMeta.join(' · ');
+              // details = playlistMeta.join(' · ');
+              details = title!;
             }
 
             numProcessedEntries++;
