@@ -8,8 +8,6 @@ import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
 const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
-  getRouter!('/ping').get('/pong', (_, res) => res.sendStatus(200));
-
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit, log }) => {
