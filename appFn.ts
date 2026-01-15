@@ -7,7 +7,7 @@ import { getPlaylistIdFromUrl } from './getPlaylistIdFromUrl';
 
 type ReviewEvent = 'REQUEST_CHANGES' | 'COMMENT' | 'APPROVE';
 
-const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
+const appFn: ApplicationFunction = (app: Probot) => {
   app.on(
     ['pull_request.opened', 'pull_request.synchronize'],
     async ({ payload, octokit, log }) => {
@@ -29,14 +29,14 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         body: string
       ) => {
         if (review_id) {
-          await octokit.pulls.updateReview({
+          await octokit.rest.pulls.updateReview({
             ...workingRepo,
             pull_number,
             review_id,
             body
           });
         } else {
-          await octokit.pulls.createReview({
+          await octokit.rest.pulls.createReview({
             ...workingRepo,
             pull_number,
             event,
@@ -59,7 +59,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         if (!isAllowlistedRepo) return;
 
         type PRFileArray = Awaited<
-          ReturnType<typeof octokit.pulls.listFiles>
+          ReturnType<typeof octokit.rest.pulls.listFiles>
         >['data'];
 
         const prFiles: PRFileArray = [];
@@ -70,7 +70,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
         while (isLoadingPages) {
           await setTimeout(timeToRateLimitReset);
 
-          const { data, headers } = await octokit.pulls.listFiles({
+          const { data, headers } = await octokit.rest.pulls.listFiles({
             ...workingRepo,
             pull_number,
             page
@@ -285,7 +285,7 @@ const appFn: ApplicationFunction = (app: Probot, { getRouter }) => {
           .filter(Boolean)
           .join('\n\n');
 
-        const { data: reviews } = await octokit.pulls.listReviews({
+        const { data: reviews } = await octokit.rest.pulls.listReviews({
           ...workingRepo,
           pull_number
         });
