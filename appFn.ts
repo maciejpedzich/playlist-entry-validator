@@ -47,6 +47,7 @@ const appFn: ApplicationFunction = (app: Probot) => {
 
       const repoAllowlist = [
         { owner: 'mackorone', repo: 'spotify-playlist-archive' },
+        { owner: 'mackorone', repo: 'spotify-playlist-archive-2' },
         { owner: 'maciejpedzich', repo: 'bot-testing-ground' }
       ];
 
